@@ -53,7 +53,7 @@ class TelaLogin(ctk.CTkFrame):
                      font=FONT_TITLE, text_color=TEXT).grid(row=1, column=0, pady=(6, 2))
 
         ctk.CTkLabel(card,
-                     text="Auditoria de segurança AWS com IA",
+                     text="Auditoria de segurança AWS com IA local",
                      font=FONT_SMALL, text_color=TEXT_MUTED).grid(row=2, column=0, pady=(0, 28))
 
         # Separador
@@ -126,22 +126,9 @@ class TelaLogin(ctk.CTkFrame):
             self.lbl_erro.configure(text="⚠  Preencha as duas chaves para continuar.")
             return
 
-        # Lê OPENAI_API_KEY do .env
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-        except Exception:
-            pass
-
-        gemini = os.getenv("OPENAI_API_KEY", "").strip()
-        if not gemini:
-            self.lbl_erro.configure(
-                text="⚠  OPENAI_API_KEY não encontrada no arquivo .env")
-            return
-
         self.lbl_erro.configure(text="")
         self.btn.configure(state="disabled", text="Carregando...")
-        self._on_entrar(key, secret, gemini)
+        self._on_entrar(key, secret)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -149,11 +136,10 @@ class TelaLogin(ctk.CTkFrame):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TelaAuditoria(ctk.CTkFrame):
-    def __init__(self, master, aws_key, aws_secret, openai_key):
+    def __init__(self, master, aws_key, aws_secret):
         super().__init__(master, fg_color=BG, corner_radius=0)
         self._aws_key    = aws_key
         self._aws_secret = aws_secret
-        self._openai_key = openai_key
         self._relatorio  = ""
 
         self.grid_columnconfigure(0, weight=1)
@@ -336,15 +322,14 @@ class TelaAuditoria(ctk.CTkFrame):
         secoes, dados_finais, contagens = rodar_auditoria(
             self._aws_key, self._aws_secret, callback)
 
-        self.after(0, lambda: self._set_status("Gerando relatório com IA...", CYAN))
+        self.after(0, lambda: self._set_status("Gerando relatório com IA local...", CYAN))
 
         modo      = self.modo_var.get()
-        relatorio = gerar_relatorio_ia(self._openai_key, dados_finais, modo)
+        relatorio = gerar_relatorio_ia("", dados_finais, modo)
 
         # Apaga credenciais da memória
         self._aws_key    = ""
         self._aws_secret = ""
-        self._openai_key = ""
 
         self._relatorio = relatorio
         self.after(0, lambda: self._exibir(relatorio, contagens))
@@ -420,12 +405,12 @@ class SecAuditApp(ctk.CTk):
         tela.grid(row=0, column=0, sticky="nsew")
         self._tela_atual = tela
 
-    def _ir_para_auditoria(self, aws_key, aws_secret, gemini_key):
+    def _ir_para_auditoria(self, aws_key, aws_secret):
         self._tela_atual.destroy()
         self.geometry("920x680")
         self.minsize(820, 600)
         self.resizable(True, True)
-        tela = TelaAuditoria(self, aws_key, aws_secret, openai_key)
+        tela = TelaAuditoria(self, aws_key, aws_secret)
         tela.grid(row=0, column=0, sticky="nsew")
         self._tela_atual = tela
 

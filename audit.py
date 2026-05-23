@@ -1,6 +1,7 @@
 import boto3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
+from openai import OpenAI
 
 
 def rodar_auditoria(aws_key: str, aws_secret: str, callback=None):
@@ -305,27 +306,27 @@ def rodar_auditoria(aws_key: str, aws_secret: str, callback=None):
 
 def gerar_relatorio_ia(openai_key: str, dados_finais: str, modo: str = "detalhado") -> str:
     """
-    Gera o relatório via Mangaba/Gemini.
-
-    modo: "detalhado" ou "resumido"
+    Gera o relatório via Ollama local (Mistral).
+    O parâmetro openai_key é mantido por compatibilidade com app.py mas não é usado.
     """
-    from mangaba import Agent, Task, Crew, Process
-    from mangaba.core.types import LLMConfig
 
     if modo == "resumido":
         instrucao = (
+            "Você é um analista de segurança cloud brasileiro com 10 anos de experiência. "
+            "Escreva APENAS em português do Brasil, com linguagem clara e profissional. "
             "Você recebeu resultados de uma auditoria AWS. "
-            "Escreva um resumo executivo CURTO em português (máximo 300 palavras) com:\n"
+            "Escreva um resumo executivo CURTO (máximo 300 palavras) com:\n"
             "1. Total de problemas por severidade\n"
             "2. Os 3 riscos mais críticos\n"
             "3. Ação imediata mais urgente\n\n"
             f"{dados_finais}"
         )
-        expected = "Resumo executivo curto com principais riscos e ação urgente"
     else:
         instrucao = (
+            "Você é um analista de segurança cloud brasileiro com 10 anos de experiência. "
+            "Escreva APENAS em português do Brasil, com linguagem clara e profissional. "
             "Você recebeu os resultados de uma auditoria de segurança AWS organizados por seção. "
-            "Escreva um relatório completo em português com as seguintes partes:\n"
+            "Escreva um relatório completo com as seguintes partes:\n"
             "1. Resumo executivo (visão geral dos problemas)\n"
             "2. Detalhamento por seção — explique cada problema encontrado e o risco associado\n"
             "3. Ações corretivas recomendadas — objetivas e ordenadas por prioridade\n"
@@ -333,23 +334,20 @@ def gerar_relatorio_ia(openai_key: str, dados_finais: str, modo: str = "detalhad
             "para referenciar cada item.\n\n"
             f"{dados_finais}"
         )
-        expected = "Relatório completo de segurança em português, organizado por seção e severidade"
 
-    analista = Agent(
-        role="Analista de Segurança Cloud",
-        goal="Analisar resultados de auditoria AWS e gerar relatório claro em português",
-        backstory="Especialista em segurança cloud com 10 anos de experiência",
-        llm="openai",
-        api_key=openai_key,
-       llm_config=LLMConfig(provider="openai", model="gpt-4o-mini", max_tokens=8192)
-    )
+    try:
+        client = OpenAI(
+            base_url="http://localhost:11434/v1",
+            api_key="ollama"
+        )
 
-    tarefa = Task(
-        description=instrucao,
-        expected_output=expected,
-        agent=analista
-    )
+        response = client.chat.completions.create(
+            model="mistral",
+            messages=[{"role": "user", "content": instrucao}],
+            max_tokens=4096
+        )
 
-    crew = Crew(agents=[analista], tasks=[tarefa], process=Process.SEQUENTIAL)
-    resultado = crew.kickoff()
-    return resultado.final_output
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"Erro ao conectar com Ollama: {e}\n\nVerifique se o Ollama está rodando com: ollama serve"
