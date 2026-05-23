@@ -285,7 +285,7 @@ class TelaAuditoria(ctk.CTkFrame):
 
         self.txt = ctk.CTkTextbox(
             tab, fg_color=SURFACE2, text_color=TEXT,
-            font=FONT_MONO, wrap="word", corner_radius=6,
+            font=("Consolas", 13), wrap="word", corner_radius=6,
             border_width=0,
             scrollbar_button_color=BORDER,
             scrollbar_button_hover_color=TEXT_MUTED,
