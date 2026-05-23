@@ -1,6 +1,6 @@
-# SecAudit AI — v2
+# SecAudit AI - v2
 
-Evolução do SecAudit AI v1, agora com interface gráfica completa. A lógica de auditoria é a mesma da v1 — paralela, local, sem custo — mas agora com uma tela de login, cards de progresso em tempo real e relatório exibido direto na janela.
+Evolução do SecAudit AI v1, agora com interface gráfica completa. A lógica de auditoria é a mesma da v1 - paralela, local, sem custo - mas agora com uma tela de login, cards de progresso em tempo real e relatório exibido direto na janela.
 
 ---
 
@@ -34,10 +34,10 @@ Verifica se algum usuário tem acesso de administrador sem precisar. Menos permi
 **Security Groups**
 Detecta portas perigosas abertas pra internet, como a porta 22 (SSH) e 3389 (RDP).
 
-**Autenticação — OWASP A07**
+**Autenticação - OWASP A07**
 Verifica se usuários estão sem MFA ativado e se alguma chave de acesso está ativa há mais de 90 dias sem rotação.
 
-**Logs CloudTrail — OWASP A09**
+**Logs CloudTrail - OWASP A09**
 Analisa eventos das últimas 24 horas e detecta criação ou deleção de usuários, acessos de IPs públicos suspeitos, tentativas de login falhadas, ações em horário suspeito e uso do usuário root.
 
 **Monitoramento EC2**
@@ -49,7 +49,7 @@ Verifica se as instâncias estão com monitoramento ativado.
 
 O projeto é dividido em dois arquivos.
 
-**audit.py — lógica de auditoria**
+**audit.py - lógica de auditoria**
 
 Contém todas as funções de verificação AWS rodando em paralelo com `ThreadPoolExecutor` e a função `gerar_relatorio_ia` que conecta no Ollama local:
 
@@ -65,7 +65,7 @@ client = OpenAI(
 )
 ```
 
-**app.py — interface gráfica**
+**app.py - interface gráfica**
 
 Gerencia as duas telas com CustomTkinter. A tela de login passa as credenciais pra tela de auditoria, que chama o `audit.py` numa thread separada pra não travar a interface durante a análise.
 
@@ -120,12 +120,12 @@ python app.py
 
 ## Tecnologias
 
-- **Python** — linguagem principal
-- **boto3** — SDK oficial da AWS pra Python
-- **CustomTkinter** — interface gráfica moderna
-- **ThreadPoolExecutor** — análise paralela dos módulos
-- **Ollama + Mistral** — IA local, gratuita e sem limite
-- **python-dotenv** — gerenciamento seguro de credenciais
+- **Python** - linguagem principal
+- **boto3** - SDK oficial da AWS pra Python
+- **CustomTkinter** - interface gráfica moderna
+- **ThreadPoolExecutor** - análise paralela dos módulos
+- **Ollama + Mistral** - IA local, gratuita e sem limite
+- **python-dotenv** - gerenciamento seguro de credenciais
 
 ---
 
