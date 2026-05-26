@@ -25,9 +25,8 @@ FONT_SMALL = ("Segoe UI", 10)
 
 MODULOS = ["S3", "IAM", "Chaves", "Security Groups", "CloudTrail", "EC2"]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Tela 1 — Login (só credenciais AWS)
-# ─────────────────────────────────────────────────────────────────────────────
+
+# Tela 1 - Login (só credenciais AWS)
 
 class TelaLogin(ctk.CTkFrame):
     def __init__(self, master, on_entrar):
@@ -60,12 +59,12 @@ class TelaLogin(ctk.CTkFrame):
         ctk.CTkFrame(card, height=1, fg_color=BORDER).grid(
             row=3, column=0, sticky="ew", padx=32, pady=(0, 24))
 
-        # Label credenciais
+        # Label de credenciais
         ctk.CTkLabel(card, text="CREDENCIAIS AWS",
                      font=("Segoe UI", 10, "bold"),
                      text_color=CYAN).grid(row=4, column=0, sticky="w", padx=36, pady=(0, 6))
 
-        # Access Key ID
+        # Access Key ID da AWS
         ctk.CTkLabel(card, text="Access Key ID",
                      font=FONT_SMALL, text_color=TEXT_MUTED).grid(
             row=5, column=0, sticky="w", padx=36)
@@ -78,7 +77,7 @@ class TelaLogin(ctk.CTkFrame):
         )
         self.entry_key.grid(row=6, column=0, padx=36, pady=(4, 14))
 
-        # Secret Access Key
+        # Secret Access Key da AWS
         ctk.CTkLabel(card, text="Secret Access Key",
                      font=FONT_SMALL, text_color=TEXT_MUTED).grid(
             row=7, column=0, sticky="w", padx=36)
@@ -91,7 +90,7 @@ class TelaLogin(ctk.CTkFrame):
         )
         self.entry_secret.grid(row=8, column=0, padx=36, pady=(4, 6))
 
-        # Aviso segurança
+        # Aviso segurança que não vai ser enviado pra lugar nenhum
         ctk.CTkLabel(
             card,
             text="🔒  As chaves são usadas apenas durante a análise e apagadas em seguida.",
@@ -103,7 +102,7 @@ class TelaLogin(ctk.CTkFrame):
                                      font=FONT_SMALL, text_color=RED)
         self.lbl_erro.grid(row=10, column=0)
 
-        # Botão
+        # Botão pra iniciar a auditoria
         self.btn = ctk.CTkButton(
             card, text="Iniciar Auditoria  →",
             font=("Segoe UI", 13, "bold"),
@@ -123,7 +122,7 @@ class TelaLogin(ctk.CTkFrame):
         secret = self.entry_secret.get().strip()
 
         if not key or not secret:
-            self.lbl_erro.configure(text="⚠  Preencha as duas chaves para continuar.")
+            self.lbl_erro.configure(text="⚠  Coloque as duas chaves para continuar.")
             return
 
         self.lbl_erro.configure(text="")
@@ -131,9 +130,8 @@ class TelaLogin(ctk.CTkFrame):
         self._on_entrar(key, secret)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Tela 2 — Auditoria
-# ─────────────────────────────────────────────────────────────────────────────
+
+# Tela 2 - Auditoria
 
 class TelaAuditoria(ctk.CTkFrame):
     def __init__(self, master, aws_key, aws_secret):
@@ -153,7 +151,7 @@ class TelaAuditoria(ctk.CTkFrame):
         main.grid_columnconfigure(0, weight=1)
         main.grid_rowconfigure(2, weight=1)
 
-        # ── Header ──
+        # -- Header --
         header = ctk.CTkFrame(main, fg_color="transparent")
         header.grid(row=0, column=0, sticky="ew", pady=(0, 16))
         header.grid_columnconfigure(1, weight=1)
@@ -174,7 +172,7 @@ class TelaAuditoria(ctk.CTkFrame):
         ctk.CTkFrame(main, height=1, fg_color=BORDER).grid(
             row=0, column=0, sticky="ew", pady=(68, 0))
 
-        # ── Opções + barra de progresso ──
+        # -- Opções + barra de progresso --
         opts = ctk.CTkFrame(main, fg_color="transparent")
         opts.grid(row=1, column=0, sticky="ew", pady=(10, 8))
         opts.grid_columnconfigure(1, weight=1)
@@ -205,7 +203,7 @@ class TelaAuditoria(ctk.CTkFrame):
         self.progressbar.set(0)
         self.progressbar.grid(row=0, column=2, padx=(16, 0))
 
-        # ── Tabs ──
+        # -- Tabs --
         tab_view = ctk.CTkTabview(
             main,
             fg_color=SURFACE,
@@ -230,7 +228,7 @@ class TelaAuditoria(ctk.CTkFrame):
         self._build_tab_progresso(tab_view.tab("Progresso"))
         self._build_tab_relatorio(tab_view.tab("Relatório"))
 
-        # ── Footer ──
+        # -- Footer --
         footer = ctk.CTkFrame(main, fg_color="transparent")
         footer.grid(row=3, column=0, sticky="ew", pady=(6, 0))
         footer.grid_columnconfigure(1, weight=1)
@@ -240,7 +238,7 @@ class TelaAuditoria(ctk.CTkFrame):
         self.lbl_contagem.grid(row=0, column=0, sticky="w")
 
         self.btn_salvar = ctk.CTkButton(
-            footer, text="💾  Salvar Relatório",
+            footer, text="Salvar Relatório",
             font=FONT_SMALL,
             fg_color=SURFACE2, hover_color=BORDER,
             text_color=TEXT, height=30, corner_radius=6,
@@ -294,7 +292,8 @@ class TelaAuditoria(ctk.CTkFrame):
         self.txt.insert("end", "O relatório aparecerá aqui após a auditoria concluir...\n")
         self.txt.configure(state="disabled")
 
-    # ── Lógica ───────────────────────────────────────────────────────────────
+
+    # -- Lógica da auditoria --
 
     def _iniciar_auditoria(self):
         threading.Thread(target=self._tarefa, daemon=True).start()
@@ -327,7 +326,7 @@ class TelaAuditoria(ctk.CTkFrame):
         modo      = self.modo_var.get()
         relatorio = gerar_relatorio_ia("", dados_finais, modo)
 
-        # Apaga credenciais da memória
+        # Apaga credenciais da memória (mesmo que não vá ser enviado pra lugar nenhum, é bom garantir)
         self._aws_key    = ""
         self._aws_secret = ""
 
