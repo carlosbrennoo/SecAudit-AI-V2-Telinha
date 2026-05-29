@@ -15,6 +15,8 @@ CYAN       = "#00D4FF"
 CYAN_DIM   = "#00A3C4"
 GREEN      = "#3FB950"
 YELLOW     = "#D29922"
+ORANGE     = "#F0883E"
+BLUE       = "#58A6FF"
 RED        = "#F85149"
 TEXT       = "#E6EDF3"
 TEXT_MUTED = "#8B949E"
@@ -22,6 +24,17 @@ FONT_MONO  = ("Consolas", 11)
 FONT_TITLE = ("Segoe UI", 24, "bold")
 FONT_LABEL = ("Segoe UI", 12)
 FONT_SMALL = ("Segoe UI", 10)
+
+# Cor por severidade (usado para colorir relatório e cards)
+SEV_CORES = {
+    "critico": RED,
+    "perigo":  ORANGE,
+    "alerta":  YELLOW,
+    "medio":   BLUE,
+    "baixo":   TEXT_MUTED,
+    "ok":      GREEN,
+    "erro":    RED,
+}
 
 # Lista de módulos vem do audit.py para ficar sempre sincronizada
 try:
@@ -92,19 +105,28 @@ class TelaLogin(ctk.CTkFrame):
             text_color=TEXT, font=FONT_MONO,
             height=40, width=368, corner_radius=8
         )
-        self.entry_secret.grid(row=8, column=0, padx=36, pady=(4, 6))
+        self.entry_secret.grid(row=8, column=0, padx=36, pady=(4, 4))
 
-        # Aviso segurança que não vai ser enviado pra lugar nenhum
+        # Mostrar / ocultar a secret key
+        self.mostrar_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            card, text="Mostrar Secret Key", variable=self.mostrar_var,
+            command=self._toggle_secret, font=("Segoe UI", 9),
+            text_color=TEXT_MUTED, fg_color=CYAN_DIM, hover_color=CYAN,
+            checkbox_width=16, checkbox_height=16, corner_radius=4
+        ).grid(row=9, column=0, sticky="w", padx=36, pady=(0, 2))
+
+        # Aviso segurança
         ctk.CTkLabel(
             card,
             text="🔒  As chaves são usadas apenas durante a análise e apagadas em seguida.",
             font=("Segoe UI", 9), text_color=TEXT_MUTED, wraplength=340
-        ).grid(row=9, column=0, padx=36, pady=(6, 22))
+        ).grid(row=10, column=0, padx=36, pady=(6, 18))
 
         # Erro
         self.lbl_erro = ctk.CTkLabel(card, text="",
                                      font=FONT_SMALL, text_color=RED)
-        self.lbl_erro.grid(row=10, column=0)
+        self.lbl_erro.grid(row=11, column=0)
 
         # Botão pra iniciar a auditoria
         self.btn = ctk.CTkButton(
@@ -115,11 +137,14 @@ class TelaLogin(ctk.CTkFrame):
             height=44, width=368, corner_radius=8,
             command=self._entrar
         )
-        self.btn.grid(row=11, column=0, padx=36, pady=(8, 36))
+        self.btn.grid(row=12, column=0, padx=36, pady=(8, 36))
 
         # Bind Enter
         self.entry_secret.bind("<Return>", lambda e: self._entrar())
         self.entry_key.bind("<Return>", lambda e: self.entry_secret.focus())
+
+    def _toggle_secret(self):
+        self.entry_secret.configure(show="" if self.mostrar_var.get() else "•")
 
     def _entrar(self):
         key    = self.entry_key.get().strip()
@@ -138,11 +163,13 @@ class TelaLogin(ctk.CTkFrame):
 # Tela 2 - Auditoria
 
 class TelaAuditoria(ctk.CTkFrame):
-    def __init__(self, master, aws_key, aws_secret):
+    def __init__(self, master, aws_key, aws_secret, on_voltar):
         super().__init__(master, fg_color=BG, corner_radius=0)
         self._aws_key    = aws_key
         self._aws_secret = aws_secret
+        self._on_voltar  = on_voltar
         self._relatorio  = ""
+        self._achados    = ""
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -184,7 +211,7 @@ class TelaAuditoria(ctk.CTkFrame):
         ctk.CTkLabel(opts, text="Tipo de relatório:",
                      font=FONT_LABEL, text_color=TEXT).grid(row=0, column=0, padx=(0, 12))
 
-        self.modo_var = ctk.StringVar(value="detalhado")
+        self.modo_var = ctk.StringVar(value="Detalhado")
         seg = ctk.CTkSegmentedButton(
             opts,
             values=["Detalhado", "Resumido"],
@@ -196,7 +223,6 @@ class TelaAuditoria(ctk.CTkFrame):
             unselected_hover_color=BORDER,
             text_color=TEXT,
             font=FONT_LABEL,
-            command=lambda v: self.modo_var.set(v.lower())
         )
         seg.grid(row=0, column=1, sticky="w")
 
@@ -226,29 +252,52 @@ class TelaAuditoria(ctk.CTkFrame):
         tab_view.grid_rowconfigure(0, weight=1)
 
         tab_view.add("Progresso")
+        tab_view.add("Achados")
         tab_view.add("Relatório")
         self._tab_view = tab_view
 
         self._build_tab_progresso(tab_view.tab("Progresso"))
-        self._build_tab_relatorio(tab_view.tab("Relatório"))
+        self.txt_achados = self._build_textbox(tab_view.tab("Achados"),
+                                               "Os achados aparecerão aqui assim que a varredura terminar...")
+        self.txt = self._build_textbox(tab_view.tab("Relatório"),
+                                       "O relatório com IA aparecerá aqui após a auditoria concluir...")
 
         # -- Footer --
         footer = ctk.CTkFrame(main, fg_color="transparent")
-        footer.grid(row=3, column=0, sticky="ew", pady=(6, 0))
-        footer.grid_columnconfigure(1, weight=1)
+        footer.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+        footer.grid_columnconfigure(2, weight=1)
+
+        self.lbl_risco = ctk.CTkLabel(
+            footer, text="", font=("Segoe UI", 12, "bold"), anchor="w")
+        self.lbl_risco.grid(row=0, column=0, sticky="w", padx=(0, 14))
 
         self.lbl_contagem = ctk.CTkLabel(
             footer, text="", font=FONT_SMALL, text_color=TEXT_MUTED, anchor="w")
-        self.lbl_contagem.grid(row=0, column=0, sticky="w")
+        self.lbl_contagem.grid(row=0, column=1, sticky="w")
+
+        self.btn_nova = ctk.CTkButton(
+            footer, text="Nova auditoria", font=FONT_SMALL,
+            fg_color=SURFACE2, hover_color=BORDER, text_color=TEXT,
+            height=30, width=110, corner_radius=6,
+            command=self._nova, state="disabled"
+        )
+        self.btn_nova.grid(row=0, column=3, padx=(0, 8))
+
+        self.btn_copiar = ctk.CTkButton(
+            footer, text="Copiar", font=FONT_SMALL,
+            fg_color=SURFACE2, hover_color=BORDER, text_color=TEXT,
+            height=30, width=80, corner_radius=6,
+            command=self._copiar, state="disabled"
+        )
+        self.btn_copiar.grid(row=0, column=4, padx=(0, 8))
 
         self.btn_salvar = ctk.CTkButton(
-            footer, text="Salvar Relatório",
-            font=FONT_SMALL,
-            fg_color=SURFACE2, hover_color=BORDER,
-            text_color=TEXT, height=30, corner_radius=6,
+            footer, text="Salvar Relatório", font=FONT_SMALL,
+            fg_color=SURFACE2, hover_color=BORDER, text_color=TEXT,
+            height=30, corner_radius=6,
             command=self._salvar, state="disabled"
         )
-        self.btn_salvar.grid(row=0, column=2)
+        self.btn_salvar.grid(row=0, column=5)
 
     def _build_tab_progresso(self, tab):
         tab.grid_columnconfigure(0, weight=1)
@@ -282,20 +331,40 @@ class TelaAuditoria(ctk.CTkFrame):
         frame._lbl = lbl
         return frame
 
-    def _build_tab_relatorio(self, tab):
+    def _build_textbox(self, tab, placeholder):
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_rowconfigure(0, weight=1)
 
-        self.txt = ctk.CTkTextbox(
+        box = ctk.CTkTextbox(
             tab, fg_color=SURFACE2, text_color=TEXT,
             font=("Consolas", 13), wrap="word", corner_radius=6,
             border_width=0,
             scrollbar_button_color=BORDER,
             scrollbar_button_hover_color=TEXT_MUTED,
         )
-        self.txt.grid(row=0, column=0, sticky="nsew")
-        self.txt.insert("end", "O relatório aparecerá aqui após a auditoria concluir...\n")
-        self.txt.configure(state="disabled")
+        box.grid(row=0, column=0, sticky="nsew")
+        for sev, cor in SEV_CORES.items():
+            box.tag_config(sev, foreground=cor)
+        box.insert("end", placeholder + "\n")
+        box.configure(state="disabled")
+        return box
+
+    @staticmethod
+    def _tag_da_linha(linha):
+        for tag in ("critico", "perigo", "alerta", "medio", "baixo", "ok"):
+            if f"[{tag.upper()}]" in linha:
+                return tag
+        if "[ERRO]" in linha:
+            return "erro"
+        return None
+
+    def _preencher(self, box, texto):
+        box.configure(state="normal")
+        box.delete("1.0", "end")
+        for linha in texto.split("\n"):
+            tag = self._tag_da_linha(linha)
+            box.insert("end", linha + "\n", tag if tag else ())
+        box.configure(state="disabled")
 
 
     # -- Lógica da auditoria --
@@ -305,60 +374,117 @@ class TelaAuditoria(ctk.CTkFrame):
 
     def _tarefa(self):
         try:
-            from audit import rodar_auditoria, gerar_relatorio_ia
-        except ImportError:
-            self.after(0, lambda: self._set_status("❌  audit.py não encontrado.", RED))
-            return
+            try:
+                from audit import rodar_auditoria, gerar_relatorio_ia
+            except ImportError:
+                self.after(0, lambda: self._falhar("audit.py não encontrado."))
+                return
 
-        concluidos = [0]
+            concluidos = [0]
 
-        def callback(nome, status):
-            if status == "iniciando":
-                self.after(0, lambda n=nome: self._modulo_status(n, "iniciando"))
-            elif status == "concluido":
-                concluidos[0] += 1
-                prog = concluidos[0] / len(MODULOS)
-                self.after(0, lambda n=nome: self._modulo_status(n, "concluido"))
-                self.after(0, lambda p=prog: self.progressbar.set(p))
-                self.after(0, lambda c=concluidos[0]: self._set_status(
-                    f"Analisando... {c}/{len(MODULOS)} módulos concluídos", TEXT_MUTED))
+            def callback(nome, status, extra=None):
+                if status == "iniciando":
+                    self.after(0, lambda n=nome: self._modulo_status(n, "iniciando"))
+                elif status == "concluido":
+                    concluidos[0] += 1
+                    prog = concluidos[0] / len(MODULOS)
+                    self.after(0, lambda p=prog: self.progressbar.set(p))
+                    self.after(0, lambda c=concluidos[0]: self._set_status(
+                        f"Analisando... {c}/{len(MODULOS)} módulos concluídos", TEXT_MUTED))
+                elif status == "resultado":
+                    self.after(0, lambda n=nome, s=extra: self._modulo_status(n, "resultado", s))
 
-        secoes, dados_finais, contagens = rodar_auditoria(
-            self._aws_key, self._aws_secret, callback)
+            secoes, dados_finais, contagens = rodar_auditoria(
+                self._aws_key, self._aws_secret, callback)
 
-        self.after(0, lambda: self._set_status("Gerando relatório com IA local...", CYAN))
+            # Mostra os achados estruturados imediatamente (não depende de IA)
+            self._achados = self._montar_achados(secoes, contagens)
+            self.after(0, lambda: self._exibir_achados(contagens))
 
-        modo      = self.modo_var.get()
-        relatorio = gerar_relatorio_ia("", dados_finais, modo)
+            # Camada extra: relatório com IA local
+            self.after(0, lambda: self._set_status("Gerando relatório com IA local...", CYAN))
+            modo      = self.modo_var.get().lower()
+            relatorio = gerar_relatorio_ia("", dados_finais, modo)
+            self._relatorio = relatorio
 
-        # Apaga credenciais da memória (mesmo que não vá ser enviado pra lugar nenhum, é bom garantir)
-        self._aws_key    = ""
-        self._aws_secret = ""
+            # Apaga credenciais da memória
+            self._aws_key = ""
+            self._aws_secret = ""
 
-        self._relatorio = relatorio
-        self.after(0, lambda: self._exibir(relatorio, contagens))
+            self.after(0, lambda: self._exibir_relatorio(relatorio))
 
-    def _exibir(self, relatorio, contagens):
-        self.txt.configure(state="normal")
-        self.txt.delete("1.0", "end")
-        self.txt.insert("end", relatorio)
-        self.txt.configure(state="disabled")
-        self._tab_view.set("Relatório")
+        except Exception as e:
+            self._aws_key = ""
+            self._aws_secret = ""
+            self.after(0, lambda err=e: self._falhar(str(err)))
+
+    def _montar_achados(self, secoes, contagens):
+        linhas = []
+        for secao, itens in secoes.items():
+            linhas.append(f"=== {secao} ===")
+            for item in itens:
+                linhas.append(f"  {item}")
+            linhas.append("")
+        return "\n".join(linhas)
+
+    def _exibir_achados(self, contagens):
+        self._preencher(self.txt_achados, self._achados)
+        self._tab_view.set("Achados")
 
         c = contagens
+        score = c.get("score", 0)
+        rotulo, cor = self._risco(score)
+        self.lbl_risco.configure(text=f"⚠ {rotulo} (score {score})", text_color=cor)
         self.lbl_contagem.configure(
-            text=(f"⚠ Score: {c.get('score', 0)}   "
-                  f"🔴 Críticos: {c['criticos']}   🟠 Perigos: {c['perigos']}   "
-                  f"🟡 Alertas: {c['alertas']}   🔵 Médios: {c['medios']}   "
-                  f"⚪ Baixos: {c.get('baixos', 0)}"),
+            text=(f"🔴 {c['criticos']}   🟠 {c['perigos']}   "
+                  f"🟡 {c['alertas']}   🔵 {c['medios']}   ⚪ {c.get('baixos', 0)}"),
             text_color=TEXT
         )
         self.progressbar.set(1)
         self.btn_salvar.configure(state="normal")
-        self._set_status("✔  Auditoria concluída.", GREEN)
+        self.btn_copiar.configure(state="normal")
+
+    def _exibir_relatorio(self, relatorio):
+        self._preencher(self.txt, relatorio)
+        if relatorio.startswith("Erro ao conectar com Ollama"):
+            self._set_status("⚠  Achados prontos. IA indisponível (Ollama offline).", YELLOW)
+        else:
+            self._tab_view.set("Relatório")
+            self._set_status("✔  Auditoria concluída.", GREEN)
+        self.btn_nova.configure(state="normal")
+
+    def _falhar(self, msg):
+        self._set_status(f"❌  {msg}", RED)
+        self._preencher(self.txt_achados, f"[ERRO] A auditoria falhou:\n\n{msg}")
+        self._tab_view.set("Achados")
+        self.btn_nova.configure(state="normal")
+        self.progressbar.configure(progress_color=RED)
+        self.progressbar.set(1)
+
+    @staticmethod
+    def _risco(score):
+        if score == 0:
+            return "Seguro", GREEN
+        if score <= 30:
+            return "Risco Baixo", BLUE
+        if score <= 80:
+            return "Risco Médio", ORANGE
+        return "Risco Alto", RED
+
+    def _nova(self):
+        if self._on_voltar:
+            self._on_voltar()
+
+    def _copiar(self):
+        conteudo = self._relatorio or self._achados
+        if not conteudo:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(conteudo)
+        self._set_status("✔  Copiado para a área de transferência.", GREEN)
 
     def _salvar(self):
-        if not self._relatorio:
+        if not self._achados and not self._relatorio:
             return
         ts    = datetime.now().strftime("%Y%m%d_%H%M%S")
         path  = filedialog.asksaveasfilename(
@@ -367,14 +493,23 @@ class TelaAuditoria(ctk.CTkFrame):
             initialfile=f"relatorio_{ts}.txt",
             title="Salvar relatório"
         )
-        if path:
-            if path.lower().endswith(".html"):
-                conteudo = self._relatorio_html(self._relatorio, ts)
-            else:
-                conteudo = self._relatorio
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(conteudo)
-            self._set_status(f"✔  Salvo em {os.path.basename(path)}", GREEN)
+        if not path:
+            return
+
+        rel = self._relatorio if self._relatorio and not self._relatorio.startswith("Erro ao conectar") else ""
+        texto = (
+            (rel + "\n\n" if rel else "")
+            + "────────────── ACHADOS DETALHADOS ──────────────\n\n"
+            + self._achados
+        )
+
+        if path.lower().endswith(".html"):
+            conteudo = self._relatorio_html(texto, ts)
+        else:
+            conteudo = texto
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(conteudo)
+        self._set_status(f"✔  Salvo em {os.path.basename(path)}", GREEN)
 
     @staticmethod
     def _relatorio_html(texto, ts):
@@ -397,7 +532,7 @@ class TelaAuditoria(ctk.CTkFrame):
     def _set_status(self, msg, cor=TEXT_MUTED):
         self.lbl_status.configure(text=msg, text_color=cor)
 
-    def _modulo_status(self, nome, status):
+    def _modulo_status(self, nome, status, extra=None):
         w = self._modulo_widgets.get(nome)
         if not w:
             return
@@ -405,10 +540,11 @@ class TelaAuditoria(ctk.CTkFrame):
             w._dot.configure(text_color=YELLOW)
             w._lbl.configure(text_color=TEXT)
             w.configure(border_color=YELLOW)
-        elif status == "concluido":
-            w._dot.configure(text_color=GREEN)
-            w._lbl.configure(text_color=GREEN)
-            w.configure(border_color=GREEN)
+        elif status == "resultado":
+            cor = SEV_CORES.get(extra, GREEN)
+            w._dot.configure(text_color=cor)
+            w._lbl.configure(text_color=cor)
+            w.configure(border_color=cor)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -419,15 +555,18 @@ class SecAuditApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("SecAudit AI")
-        self.geometry("520x560")
-        self.minsize(480, 520)
+        self.geometry("520x600")
+        self.minsize(480, 560)
         self.configure(fg_color=BG)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+        self._tela_atual = None
         self._mostrar_login()
 
     def _mostrar_login(self):
-        self.geometry("520x560")
+        if self._tela_atual:
+            self._tela_atual.destroy()
+        self.geometry("520x600")
         self.resizable(False, False)
         tela = TelaLogin(self, on_entrar=self._ir_para_auditoria)
         tela.grid(row=0, column=0, sticky="nsew")
@@ -435,10 +574,10 @@ class SecAuditApp(ctk.CTk):
 
     def _ir_para_auditoria(self, aws_key, aws_secret):
         self._tela_atual.destroy()
-        self.geometry("920x680")
-        self.minsize(820, 600)
+        self.geometry("960x720")
+        self.minsize(860, 640)
         self.resizable(True, True)
-        tela = TelaAuditoria(self, aws_key, aws_secret)
+        tela = TelaAuditoria(self, aws_key, aws_secret, on_voltar=self._mostrar_login)
         tela.grid(row=0, column=0, sticky="nsew")
         self._tela_atual = tela
 

@@ -121,9 +121,17 @@ def rodar_auditoria(aws_key: str, aws_secret: str, callback=None):
         region_name='us-east-1'
     )
 
-    def _cb(nome, status):
+    def _cb(nome, status, extra=None):
         if callback:
-            callback(nome, status)
+            callback(nome, status, extra)
+
+    def _pior_severidade(resultados):
+        for tag, sev in (('[CRITICO]', 'critico'), ('[PERIGO]', 'perigo'),
+                         ('[ALERTA]', 'alerta'), ('[MEDIO]', 'medio'),
+                         ('[BAIXO]', 'baixo')):
+            if any(tag in r for r in resultados):
+                return sev
+        return 'ok'
 
     def _client(servico, regiao=None):
         return session.client(servico, region_name=regiao or 'us-east-1', config=_BOTO_CFG)
@@ -1061,11 +1069,14 @@ def rodar_auditoria(aws_key: str, aws_secret: str, callback=None):
     with ThreadPoolExecutor(max_workers=len(VERIFICACOES)) as executor:
         futures = {executor.submit(fn): nome for nome, fn in VERIFICACOES.items()}
         for future in as_completed(futures):
+            nome_modulo = futures[future]
             try:
                 secao, resultados = future.result()
                 secoes[secao] = resultados
+                _cb(nome_modulo, "resultado", _pior_severidade(resultados))
             except Exception as e:
-                secoes[f"Erro-{futures[future]}"] = [f"[ERRO] {e}"]
+                secoes[f"Erro-{nome_modulo}"] = [f"[ERRO] {e}"]
+                _cb(nome_modulo, "resultado", "erro")
 
     # ──────────────────────────────────────────────
     # Montar dados estruturados
