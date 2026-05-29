@@ -1,25 +1,26 @@
 # SecAudit AI - v2
 
-Evolução do SecAudit AI v1, agora com interface gráfica completa. A lógica de auditoria é a mesma da v1 - paralela, local, sem custo - mas agora com uma tela de login, cards de progresso em tempo real e relatório exibido direto na janela.
+> 📦 Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI](https://github.com/carlosbrennoo/SecAudit-AI)
+
+Ferramenta de auditoria de segurança AWS com **interface gráfica** e relatório gerado por **IA local**. Você coloca suas chaves AWS, ele varre a conta inteira procurando problemas de segurança e te entrega um relatório explicado em português — tudo rodando na sua máquina, sem custo e sem enviar nada pra nuvem.
+
+Esta é a evolução do [SecAudit AI v1](https://github.com/carlosbrennoo/SecAudit-AI): a lógica continua local e paralela, mas agora com tela de login, cards de progresso em tempo real, muito mais verificações e relatório exibido direto na janela.
 
 ---
 
 ## O que mudou da v1 pra v2
 
 **Interface gráfica com CustomTkinter**
-Na v1 tudo rodava no terminal. Na v2 tem uma tela de login, cards visuais pra cada módulo que ficam amarelos enquanto analisam e verdes quando concluem, barra de progresso e aba de relatório.
+Na v1 tudo rodava no terminal. Na v2 tem tela de login, um card pra cada módulo que fica amarelo enquanto analisa e verde quando termina, barra de progresso e aba de relatório.
 
-**Tela de login segura**
-As credenciais AWS são digitadas na interface e apagadas da memória assim que a auditoria termina. Nada fica salvo em disco além do `.env`.
+**Chaves digitadas na hora**
+As credenciais AWS são digitadas direto na tela de login e apagadas da memória assim que a auditoria termina. Nada de chave salva em arquivo.
 
-**Dois arquivos separados**
-O projeto foi dividido em `app.py` (interface) e `audit.py` (lógica de auditoria), deixando o código mais organizado e fácil de manter.
+**Muito mais verificações**
+Saiu de 6 para **19 módulos**, cobrindo a conta inteira em **todas as regiões**.
 
-**Escolha do tipo de relatório**
-Na tela de auditoria você escolhe entre Detalhado ou Resumido antes de iniciar.
-
-**Botão de salvar**
-O relatório pode ser salvo em qualquer pasta com nome gerado automaticamente por data e hora.
+**Score de risco e export**
+No fim você vê um score de risco e pode salvar o relatório em **TXT ou HTML**.
 
 ---
 
@@ -34,13 +35,13 @@ Public Access Block, bucket policy/ACL pública, criptografia, versionamento, lo
 Conta root (MFA e access keys), política de senha, `AdministratorAccess` (gerenciada, inline com `Action:* Resource:*` ou herdada de grupo) e trust policies de roles que confiam em `*` ou em contas externas.
 
 **Autenticação e Chaves (OWASP A07 / CIS 1)**
-MFA, chaves com mais de 90 dias sem rotação, chaves nunca usadas, múltiplas chaves ativas e idade da senha de console (via credential report).
+MFA, chaves com mais de 90 dias sem rotação, chaves nunca usadas, múltiplas chaves ativas e idade da senha de console.
 
 **Security Groups (CIS 5)**
 Portas abertas para a internet em IPv4 **e** IPv6, destacando SSH/RDP/bancos como crítico.
 
 **Logs CloudTrail (OWASP A09 / CIS 3)**
-Configuração do trail (multi-região e validação de log) e eventos suspeitos das últimas 24h, com filtro anti-ruído (horário suspeito só para eventos de escrita).
+Configuração do trail (multi-região e validação de log) e eventos suspeitos das últimas 24h, com filtro anti-ruído.
 
 **EC2**
 IMDSv2 obrigatório (anti-SSRF), IP público, volumes EBS sem criptografia e monitoramento.
@@ -63,18 +64,60 @@ Ao final é calculado um **score de risco** ponderado e o relatório pode ser sa
 
 ---
 
+## Como rodar
+
+### 1. Pré-requisitos
+
+- Python 3.8 ou superior
+- Conta AWS (Free Tier funciona)
+- [Ollama](https://ollama.com) instalado (é ele que gera o relatório com IA, localmente)
+
+### 2. Baixe o modelo de IA
+
+```bash
+ollama pull mistral
+```
+
+### 3. Instale as dependências
+
+```bash
+pip install boto3 customtkinter openai
+```
+
+### 4. Deixe o Ollama ativo
+
+Em um terminal separado:
+
+```bash
+ollama serve
+```
+
+### 5. Abra o programa
+
+```bash
+python app.py
+```
+
+Vai abrir a tela de login. **Cole sua Access Key e sua Secret Access Key da AWS** e clique em *Iniciar Auditoria*. As chaves ficam só na memória durante a análise — não são salvas em lugar nenhum.
+
+> 💡 Não precisa criar nenhum arquivo de configuração nem `.env`. As chaves são informadas direto na tela.
+
+---
+
+## Que permissões a chave AWS precisa?
+
+Apenas **leitura**. O ideal é usar uma chave com a policy gerenciada `SecurityAudit` (ou `ReadOnlyAccess`). Se faltar alguma permissão específica, o módulo afetado é ignorado com segurança (ou marcado como "não auditável") — a auditoria não quebra e o resto continua normalmente.
+
+A ferramenta **nunca altera nada** na sua conta: só lê configurações para apontar os riscos.
+
+---
+
 ## Como funciona por baixo
 
-O projeto é dividido em dois arquivos.
+O projeto tem dois arquivos:
 
-**audit.py - lógica de auditoria**
-
-Contém todas as funções de verificação AWS rodando em paralelo com `ThreadPoolExecutor` e a função `gerar_relatorio_ia` que conecta no Ollama local:
-
-```python
-with ThreadPoolExecutor(max_workers=6) as executor:
-    futures = {executor.submit(fn): nome for nome, fn in VERIFICACOES.items()}
-```
+**`audit.py` — lógica de auditoria**
+Roda todas as verificações em paralelo com `ThreadPoolExecutor`, varre todas as regiões e monta os dados. A função `gerar_relatorio_ia` envia o resultado para o Ollama local, que escreve o relatório:
 
 ```python
 client = OpenAI(
@@ -83,80 +126,27 @@ client = OpenAI(
 )
 ```
 
-**app.py - interface gráfica**
-
-Gerencia as duas telas com CustomTkinter. A tela de login passa as credenciais pra tela de auditoria, que chama o `audit.py` numa thread separada pra não travar a interface durante a análise.
-
----
-
-## Como rodar
-
-**Pré-requisitos**
-
-- Python 3.8+
-- Conta AWS (Free Tier funciona)
-- Ollama instalado em [ollama.com](https://ollama.com)
-
-**Instala o modelo**
-
-```bash
-ollama pull mistral
-```
-
-**Instala as dependências**
-
-```bash
-pip install boto3 customtkinter python-dotenv openai
-```
-
-**Configuração**
-
-Cria um arquivo `.env` na raiz do projeto:
-
-```
-AWS_KEY=sua_chave_aws_aqui
-AWS_SECRET=sua_chave_secreta_aws_aqui
-```
-
-Nunca sobe o `.env` pro GitHub. O `.gitignore` já está configurado pra ignorar ele.
-
-**Rodando**
-
-Certifica que o Ollama está ativo:
-
-```bash
-ollama serve
-```
-
-Depois roda a interface:
-
-```bash
-python app.py
-```
+**`app.py` — interface gráfica**
+Gerencia as telas com CustomTkinter. A tela de login passa as chaves para a tela de auditoria, que chama o `audit.py` em uma thread separada pra não travar a janela durante a análise.
 
 ---
 
 ## Tecnologias
 
-- **Python** - linguagem principal
-- **boto3** - SDK oficial da AWS pra Python
-- **CustomTkinter** - interface gráfica moderna
-- **ThreadPoolExecutor** - análise paralela dos módulos
-- **Ollama + Mistral** - IA local, gratuita e sem limite
-- **python-dotenv** - gerenciamento seguro de credenciais
+- **Python** — linguagem principal
+- **boto3** — SDK oficial da AWS
+- **CustomTkinter** — interface gráfica moderna
+- **ThreadPoolExecutor** — análise paralela dos módulos e das regiões
+- **Ollama + Mistral** — IA local, gratuita e sem limite
 
 ---
 
-## Permissões necessárias
+## Próximas melhorias
 
-A chave usada na auditoria precisa apenas de **acesso de leitura**. O ideal é anexar a policy gerenciada `SecurityAudit` (ou `ReadOnlyAccess`). Sem alguma permissão específica, o módulo afetado é ignorado de forma segura (ou marcado como não auditável) — a auditoria não quebra.
-
-## Proximas melhorias
-
-- Exportar relatorio em PDF (HTML já disponível)
-- Integracao com Slack pra alertas em tempo real
-- Historico de auditorias anteriores pra comparar evolucao
-- Escolha do modelo de IA via interface
+- Exportar relatório em PDF (HTML já disponível)
+- Integração com Slack para alertas em tempo real
+- Histórico de auditorias anteriores para comparar a evolução
+- Escolha do modelo de IA pela interface
 - Supressão de falsos-positivos (whitelist de recursos conhecidos)
 
 ---
