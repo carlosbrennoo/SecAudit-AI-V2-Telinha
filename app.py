@@ -23,7 +23,11 @@ FONT_TITLE = ("Segoe UI", 24, "bold")
 FONT_LABEL = ("Segoe UI", 12)
 FONT_SMALL = ("Segoe UI", 10)
 
-MODULOS = ["S3", "IAM", "Chaves", "Security Groups", "CloudTrail", "EC2"]
+# Lista de módulos vem do audit.py para ficar sempre sincronizada
+try:
+    from audit import MODULOS
+except ImportError:
+    MODULOS = ["S3", "IAM", "Chaves", "Security Groups", "CloudTrail", "EC2"]
 
 
 # Tela 1 - Login (só credenciais AWS)
@@ -250,8 +254,9 @@ class TelaAuditoria(ctk.CTkFrame):
         tab.grid_columnconfigure(0, weight=1)
         tab.grid_rowconfigure(0, weight=1)
 
-        grid = ctk.CTkFrame(tab, fg_color="transparent")
-        grid.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
+        # Scrollável pois agora são muitos módulos
+        grid = ctk.CTkScrollableFrame(tab, fg_color="transparent")
+        grid.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
         grid.grid_columnconfigure((0, 1, 2), weight=1)
 
         self._modulo_widgets = {}
@@ -342,8 +347,10 @@ class TelaAuditoria(ctk.CTkFrame):
 
         c = contagens
         self.lbl_contagem.configure(
-            text=(f"🔴 Críticos: {c['criticos']}   🟠 Perigos: {c['perigos']}   "
-                  f"🟡 Alertas: {c['alertas']}   🔵 Médios: {c['medios']}"),
+            text=(f"⚠ Score: {c.get('score', 0)}   "
+                  f"🔴 Críticos: {c['criticos']}   🟠 Perigos: {c['perigos']}   "
+                  f"🟡 Alertas: {c['alertas']}   🔵 Médios: {c['medios']}   "
+                  f"⚪ Baixos: {c.get('baixos', 0)}"),
             text_color=TEXT
         )
         self.progressbar.set(1)
@@ -356,14 +363,36 @@ class TelaAuditoria(ctk.CTkFrame):
         ts    = datetime.now().strftime("%Y%m%d_%H%M%S")
         path  = filedialog.asksaveasfilename(
             defaultextension=".txt",
-            filetypes=[("Texto", "*.txt"), ("Todos", "*.*")],
+            filetypes=[("Texto", "*.txt"), ("HTML", "*.html"), ("Todos", "*.*")],
             initialfile=f"relatorio_{ts}.txt",
             title="Salvar relatório"
         )
         if path:
+            if path.lower().endswith(".html"):
+                conteudo = self._relatorio_html(self._relatorio, ts)
+            else:
+                conteudo = self._relatorio
             with open(path, "w", encoding="utf-8") as f:
-                f.write(self._relatorio)
+                f.write(conteudo)
             self._set_status(f"✔  Salvo em {os.path.basename(path)}", GREEN)
+
+    @staticmethod
+    def _relatorio_html(texto, ts):
+        import html
+        corpo = html.escape(texto)
+        return (
+            "<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'>"
+            "<title>SecAudit AI — Relatório</title>"
+            "<style>"
+            "body{background:#0D1117;color:#E6EDF3;font-family:Segoe UI,Arial,sans-serif;margin:0;padding:40px;}"
+            "h1{color:#00D4FF;} .meta{color:#8B949E;margin-bottom:24px;}"
+            "pre{background:#161B22;border:1px solid #30363D;border-radius:10px;"
+            "padding:24px;white-space:pre-wrap;font-family:Consolas,monospace;line-height:1.5;}"
+            "</style></head><body>"
+            "<h1>⬡ SecAudit AI — Relatório de Auditoria AWS</h1>"
+            f"<div class='meta'>Gerado em {ts}</div>"
+            f"<pre>{corpo}</pre></body></html>"
+        )
 
     def _set_status(self, msg, cor=TEXT_MUTED):
         self.lbl_status.configure(text=msg, text_color=cor)

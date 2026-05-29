@@ -25,23 +25,41 @@ O relatório pode ser salvo em qualquer pasta com nome gerado automaticamente po
 
 ## O que ele verifica
 
-**Buckets S3**
-Checa se algum bucket está público na internet sem querer e se os arquivos estão criptografados.
+A auditoria roda em **todas as regiões habilitadas** da conta e cobre 19 módulos, com severidade padronizada (`CRITICO`, `PERIGO`, `ALERTA`, `MEDIO`, `BAIXO`, `OK`) e mapeamento para **OWASP** e **CIS AWS Benchmark**.
 
-**Permissões IAM**
-Verifica se algum usuário tem acesso de administrador sem precisar. Menos permissão, menos risco.
+**Buckets S3 (CIS 2.1)**
+Public Access Block, bucket policy/ACL pública, criptografia, versionamento, log de acesso e política exigindo HTTPS.
 
-**Security Groups**
-Detecta portas perigosas abertas pra internet, como a porta 22 (SSH) e 3389 (RDP).
+**Permissões IAM e Roles (CIS 1)**
+Conta root (MFA e access keys), política de senha, `AdministratorAccess` (gerenciada, inline com `Action:* Resource:*` ou herdada de grupo) e trust policies de roles que confiam em `*` ou em contas externas.
 
-**Autenticação - OWASP A07**
-Verifica se usuários estão sem MFA ativado e se alguma chave de acesso está ativa há mais de 90 dias sem rotação.
+**Autenticação e Chaves (OWASP A07 / CIS 1)**
+MFA, chaves com mais de 90 dias sem rotação, chaves nunca usadas, múltiplas chaves ativas e idade da senha de console (via credential report).
 
-**Logs CloudTrail - OWASP A09**
-Analisa eventos das últimas 24 horas e detecta criação ou deleção de usuários, acessos de IPs públicos suspeitos, tentativas de login falhadas, ações em horário suspeito e uso do usuário root.
+**Security Groups (CIS 5)**
+Portas abertas para a internet em IPv4 **e** IPv6, destacando SSH/RDP/bancos como crítico.
 
-**Monitoramento EC2**
-Verifica se as instâncias estão com monitoramento ativado.
+**Logs CloudTrail (OWASP A09 / CIS 3)**
+Configuração do trail (multi-região e validação de log) e eventos suspeitos das últimas 24h, com filtro anti-ruído (horário suspeito só para eventos de escrita).
+
+**EC2**
+IMDSv2 obrigatório (anti-SSRF), IP público, volumes EBS sem criptografia e monitoramento.
+
+**RDS (CIS 2.3)** — acesso público, criptografia, backup, deletion protection e snapshots públicos.
+**Snapshots e AMIs** — snapshots EBS e AMIs expostos publicamente.
+**Lambda** — runtime sem suporte, segredos em variáveis de ambiente e Function URL sem autenticação.
+**KMS (CIS 3.8)** — rotação automática de chave.
+**GuardDuty** — detecção de ameaças ativa.
+**VPC Flow Logs (CIS 3.9)** — VPCs sem registro de tráfego.
+**Segredos** — Secrets Manager sem rotação e parâmetros SSM sensíveis em texto puro.
+**Mensageria** — tópicos SNS e filas SQS com política pública.
+**Containers (ECR)** — repositórios sem scan de imagem ou com política pública.
+**Balanceadores e CDN** — ELB/ALB com listener HTTP, CloudFront permitindo HTTP e certificados ACM expirando.
+**Bancos** — Redshift público/sem criptografia e ElastiCache sem criptografia.
+**Postura da Conta** — Security Hub, AWS Config, criptografia padrão de EBS e IAM Access Analyzer.
+**Rede** — Elastic IPs alocados e não associados.
+
+Ao final é calculado um **score de risco** ponderado e o relatório pode ser salvo em **TXT ou HTML**.
 
 ---
 
@@ -129,13 +147,17 @@ python app.py
 
 ---
 
+## Permissões necessárias
+
+A chave usada na auditoria precisa apenas de **acesso de leitura**. O ideal é anexar a policy gerenciada `SecurityAudit` (ou `ReadOnlyAccess`). Sem alguma permissão específica, o módulo afetado é ignorado de forma segura (ou marcado como não auditável) — a auditoria não quebra.
+
 ## Proximas melhorias
 
-- Suporte a multiplas regioes AWS
-- Exportar relatorio em PDF
+- Exportar relatorio em PDF (HTML já disponível)
 - Integracao com Slack pra alertas em tempo real
 - Historico de auditorias anteriores pra comparar evolucao
 - Escolha do modelo de IA via interface
+- Supressão de falsos-positivos (whitelist de recursos conhecidos)
 
 ---
 
