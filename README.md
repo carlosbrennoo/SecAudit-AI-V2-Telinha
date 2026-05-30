@@ -1,8 +1,8 @@
 # SecAudit AI > Com tela
 
->  Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI](https://github.com/carlosbrennoo/SecAudit-AI)
+>  Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI] (https://github.com/carlosbrennoo/SecAudit-AI)
 
-Ferramenta de auditoria de segurança AWS com **interface gráfica** e relatório gerado por **IA local**. Você coloca suas chaves AWS, ele varre a conta inteira procurando problemas de segurança e te entrega um relatório explicado em português — tudo rodando na sua máquina, sem custo e sem enviar nada pra nuvem.
+Ferramenta de auditoria de segurança AWS com **interface gráfica** e relatório gerado por **IA local**. Você coloca suas chaves AWS, ele varre a conta inteira procurando problemas de segurança e te entrega um relatório explicado em português, tudo rodando na sua máquina, sem custo e sem enviar nada pra nuvem.
 
 Esta é a evolução do [SecAudit AI v1](https://github.com/carlosbrennoo/SecAudit-AI): a lógica continua local e paralela, mas agora com tela de login, cards de progresso em tempo real, muito mais verificações e relatório exibido direto na janela.
 
@@ -46,19 +46,31 @@ Configuração do trail (multi-região e validação de log) e eventos suspeitos
 **EC2**
 IMDSv2 obrigatório (anti-SSRF), IP público, volumes EBS sem criptografia e monitoramento.
 
-**RDS (CIS 2.3)** — acesso público, criptografia, backup, deletion protection e snapshots públicos.
-**Snapshots e AMIs** — snapshots EBS e AMIs expostos publicamente.
-**Lambda** — runtime sem suporte, segredos em variáveis de ambiente e Function URL sem autenticação.
-**KMS (CIS 3.8)** — rotação automática de chave.
-**GuardDuty** — detecção de ameaças ativa.
-**VPC Flow Logs (CIS 3.9)** — VPCs sem registro de tráfego.
-**Segredos** — Secrets Manager sem rotação e parâmetros SSM sensíveis em texto puro.
-**Mensageria** — tópicos SNS e filas SQS com política pública.
-**Containers (ECR)** — repositórios sem scan de imagem ou com política pública.
-**Balanceadores e CDN** — ELB/ALB com listener HTTP, CloudFront permitindo HTTP e certificados ACM expirando.
-**Bancos** — Redshift público/sem criptografia e ElastiCache sem criptografia.
-**Postura da Conta** — Security Hub, AWS Config, criptografia padrão de EBS e IAM Access Analyzer.
-**Rede** — Elastic IPs alocados e não associados.
+**RDS (CIS 2.3)**: acesso público, criptografia, backup, deletion protection e snapshots públicos.
+
+**Snapshots e AMIs**: snapshots EBS e AMIs expostos publicamente.
+
+**Lambda**: runtime sem suporte, segredos em variáveis de ambiente e Function URL sem autenticação.
+
+**KMS (CIS 3.8)**: rotação automática de chave.
+
+**GuardDuty**: detecção de ameaças ativa.
+
+**VPC Flow Logs (CIS 3.9)**: VPCs sem registro de tráfego.
+
+**Segredos**: Secrets Manager sem rotação e parâmetros SSM sensíveis em texto puro.
+
+**Mensageria**: tópicos SNS e filas SQS com política pública.
+
+**Containers (ECR)**: repositórios sem scan de imagem ou com política pública.
+
+**Balanceadores e CDN**: ELB/ALB com listener HTTP, CloudFront permitindo HTTP e certificados ACM expirando.
+
+**Bancos**: Redshift público/sem criptografia e ElastiCache sem criptografia.
+
+**Postura da Conta**: Security Hub, AWS Config, criptografia padrão de EBS e IAM Access Analyzer.
+
+**Rede**: Elastic IPs alocados e não associados.
 
 Ao final é calculado um **score de risco** ponderado e o relatório pode ser salvo em **TXT ou HTML**.
 
@@ -98,7 +110,7 @@ ollama serve
 python app.py
 ```
 
-Vai abrir a tela de login. **Cole sua Access Key e sua Secret Access Key da AWS** e clique em *Iniciar Auditoria*. As chaves ficam só na memória durante a análise — não são salvas em lugar nenhum.
+Vai abrir a tela de login. **Cole sua Access Key e sua Secret Access Key da AWS** e clique em *Iniciar Auditoria*. As chaves ficam só na memória durante a análise, não são salvas em lugar nenhum.
 
 > Não precisa criar nenhum arquivo de configuração nem `.env`. As chaves são informadas direto na tela.
 
@@ -116,7 +128,7 @@ A ferramenta **nunca altera nada** na sua conta: só lê configurações para ap
 
 O projeto tem dois arquivos:
 
-**`audit.py` — lógica de auditoria**
+**`audit.py`, lógica de auditoria**
 Roda todas as verificações em paralelo com `ThreadPoolExecutor`, varre todas as regiões e monta os dados. A função `gerar_relatorio_ia` envia o resultado para o Ollama local, que escreve o relatório:
 
 ```python
@@ -126,18 +138,18 @@ client = OpenAI(
 )
 ```
 
-**`app.py` — interface gráfica**
+**`app.py`, interface gráfica**
 Gerencia as telas com CustomTkinter. A tela de login passa as chaves para a tela de auditoria, que chama o `audit.py` em uma thread separada pra não travar a janela durante a análise.
 
 ---
 
 ## Tecnologias
 
-- **Python** — linguagem principal
-- **boto3** — SDK oficial da AWS
-- **CustomTkinter** — interface gráfica moderna
-- **ThreadPoolExecutor** — análise paralela dos módulos e das regiões
-- **Ollama + Mistral** — IA local, gratuita e sem limite
+- **Python**: linguagem principal
+- **boto3**: SDK oficial da AWS
+- **CustomTkinter**: interface gráfica moderna
+- **ThreadPoolExecutor**: análise paralela dos módulos e das regiões
+- **Ollama + Mistral**: IA local, gratuita e sem limite
 
 ---
 
@@ -157,4 +169,4 @@ Desenvolvido por Carlos como parte da jornada pra se tornar Security AI Engineer
 
 ---
 
-Use a vontade, filhote.
+Use a vontade, fiote
