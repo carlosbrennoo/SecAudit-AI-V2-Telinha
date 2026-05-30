@@ -1,6 +1,6 @@
 # SecAudit AI - v2
 
-> 📦 Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI](https://github.com/carlosbrennoo/SecAudit-AI)
+>  Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI](https://github.com/carlosbrennoo/SecAudit-AI)
 
 Ferramenta de auditoria de segurança AWS com **interface gráfica** e relatório gerado por **IA local**. Você coloca suas chaves AWS, ele varre a conta inteira procurando problemas de segurança e te entrega um relatório explicado em português — tudo rodando na sua máquina, sem custo e sem enviar nada pra nuvem.
 
@@ -100,7 +100,7 @@ python app.py
 
 Vai abrir a tela de login. **Cole sua Access Key e sua Secret Access Key da AWS** e clique em *Iniciar Auditoria*. As chaves ficam só na memória durante a análise — não são salvas em lugar nenhum.
 
-> 💡 Não precisa criar nenhum arquivo de configuração nem `.env`. As chaves são informadas direto na tela.
+> Não precisa criar nenhum arquivo de configuração nem `.env`. As chaves são informadas direto na tela.
 
 ---
 
