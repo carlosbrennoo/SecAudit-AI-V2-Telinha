@@ -1,4 +1,4 @@
-# SecAudit AI - v2
+# SecAudit AI > Com tela
 
 >  Versão anterior (v1, em terminal): [github.com/carlosbrennoo/SecAudit-AI](https://github.com/carlosbrennoo/SecAudit-AI)
 
