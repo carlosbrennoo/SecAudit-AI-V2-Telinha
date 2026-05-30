@@ -25,7 +25,8 @@ FONT_TITLE = ("Segoe UI", 24, "bold")
 FONT_LABEL = ("Segoe UI", 12)
 FONT_SMALL = ("Segoe UI", 10)
 
-# Cor por severidade (usado para colorir relatório e cards)
+# Cor para cada nível de perigo, usada no relatório e nos indicadores de progresso dos módulos
+
 SEV_CORES = {
     "critico": RED,
     "perigo":  ORANGE,
@@ -43,7 +44,7 @@ except ImportError:
     MODULOS = ["S3", "IAM", "Chaves", "Security Groups", "CloudTrail", "EC2"]
 
 
-# Tela 1 - Login (só credenciais AWS)
+# Primeira tela: Login (só para por as credenciais AWS)
 
 class TelaLogin(ctk.CTkFrame):
     def __init__(self, master, on_entrar):
@@ -76,7 +77,7 @@ class TelaLogin(ctk.CTkFrame):
         ctk.CTkFrame(card, height=1, fg_color=BORDER).grid(
             row=3, column=0, sticky="ew", padx=32, pady=(0, 24))
 
-        # Label de credenciais
+        # Label(espaço) de credenciais
         ctk.CTkLabel(card, text="CREDENCIAIS AWS",
                      font=("Segoe UI", 10, "bold"),
                      text_color=CYAN).grid(row=4, column=0, sticky="w", padx=36, pady=(0, 6))
